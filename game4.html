@@ -11,9 +11,34 @@
         #start-screen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
         .btn-start { padding: 20px 60px; font-size: 32px; background: #4caf50; color: white; border: none; border-radius: 60px; cursor: pointer; box-shadow: 0 10px 0 #388e3c; transition: 0.2s; }
         .btn-start:active { transform: translateY(5px); box-shadow: 0 5px 0 #388e3c; }
+        .btn-back { 
+            position: fixed; top: 15px; left: 15px; 
+            background: #667eea; color: white; border: none; 
+            padding: 10px 20px; border-radius: 25px; 
+            font-size: 16px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 50;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-back:hover { background: #5568d3; }
+        
+        @media (max-width: 600px) {
+            .btn-back { 
+                top: 10px; left: 10px; 
+                padding: 8px 15px; font-size: 14px; 
+            }
+            .info { 
+                font-size: 18px; padding: 8px 15px; 
+            }
+            #start-screen h1 { font-size: 32px !important; }
+            #start-screen p { font-size: 16px !important; padding: 0 20px; }
+            .btn-start { 
+                padding: 15px 40px; font-size: 24px; 
+            }
+        }
     </style>
 </head>
 <body>
+    <a href="index.html" class="btn-back">← Quay lại</a>
 
     <div id="start-screen">
         <h1 style="color: #1565c0; font-size: 45px;">A-RUNNER 🏃‍♂️</h1>
