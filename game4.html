@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Runner: Tốc độ thông minh</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #e3f2fd; font-family: 'Arial', sans-serif; touch-action: none; }
+        #ui { position: absolute; top: 15px; width: 100%; text-align: center; pointer-events: none; }
+        .info { font-size: 28px; color: #1565c0; font-weight: bold; background: white; padding: 10px 25px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #start-screen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .btn-start { padding: 20px 60px; font-size: 32px; background: #4caf50; color: white; border: none; border-radius: 60px; cursor: pointer; box-shadow: 0 10px 0 #388e3c; transition: 0.2s; }
+        .btn-start:active { transform: translateY(5px); box-shadow: 0 5px 0 #388e3c; }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1 style="color: #1565c0; font-size: 45px;">A-RUNNER 🏃‍♂️</h1>
+        <p style="font-size: 20px; color: #555;">Chạm để **NHẢY** ăn dấu thanh!</p>
+        <button class="btn-start" onclick="startGame()">BẮT ĐẦU HỌC 🔊</button>
+    </div>
+
+    <div id="ui">
+        <div class="info">
+            ⭐ Điểm: <span id="scoreVal">0</span> | 🚀 Tốc độ: <span id="speedVal">Chậm</span>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('scoreVal');
+const speedEl = document.getElementById('speedVal');
+
+let score = 0;
+let gameActive = false;
+let gameSpeed = 3; // Tốc độ khởi đầu (Chậm)
+let maxSpeed = 7;   // Tốc độ tối đa (Vừa phải, không quá nhanh)
+let femaleVoice = null;
+
+const player = {
+    x: 80, y: 0, w: 70, h: 70,
+    dy: 0, jumpForce: -16, gravity: 0.8,
+    groundY: 0, color: '#ff7043'
+};
+
+const tokens = [];
+const toneData = [
+    { label: 'A', color: '#ef5350' }, { label: 'À', color: '#42a5f5' },
+    { label: 'Á', color: '#ffca28' }, { label: 'Ả', color: '#ab47bc' },
+    { label: 'Ã', color: '#26a69a' }, { label: 'Ạ', color: '#d32f2f' }
+];
+
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    femaleVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Linh') || v.name.includes('Google'))) || voices.find(v => v.lang.includes('vi'));
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utter.voice = femaleVoice;
+    utter.lang = 'vi-VN';
+    utter.rate = 0.8;
+    window.speechSynthesis.speak(utter);
+}
+
+function startGame() {
+    document.getElementById('start-screen').style.display = 'none';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    player.groundY = canvas.height * 0.7;
+    player.y = player.groundY;
+    gameActive = true;
+    requestAnimationFrame(update);
+}
+
+function spawnToken() {
+    const data = toneData[Math.floor(Math.random() * toneData.length)];
+    tokens.push({
+        x: canvas.width + 100,
+        y: player.groundY - (Math.random() > 0.5 ? 150 : 20),
+        ...data
+    });
+}
+
+let spawnTimer = 0;
+function update() {
+    if (!gameActive) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Vẽ nền cỏ
+    ctx.fillStyle = '#a5d6a7';
+    ctx.fillRect(0, player.groundY + player.h, canvas.width, canvas.height);
+
+    // Nhảy
+    player.dy += player.gravity;
+    player.y += player.dy;
+    if (player.y > player.groundY) { player.y = player.groundY; player.dy = 0; }
+
+    // Vẽ bạn A
+    ctx.save();
+    ctx.translate(player.x + 35, player.y + 35);
+    ctx.fillStyle = player.color;
+    ctx.font = 'bold 70px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('A', 0, 0);
+    // Mắt
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-15, -10, 10, 0, Math.PI*2); ctx.arc(15, -10, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'black';
+    ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI*2); ctx.arc(15, -10, 5, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Tạo dấu thanh
+    spawnTimer++;
+    if (spawnTimer > (120 - gameSpeed * 5)) { // Tạo dấu thưa hơn khi đi chậm
+        spawnToken();
+        spawnTimer = 0;
+    }
+
+    // Xử lý dấu thanh
+    for (let i = tokens.length - 1; i >= 0; i--) {
+        const t = tokens[i];
+        t.x -= gameSpeed;
+
+        ctx.fillStyle = t.color;
+        ctx.font = 'bold 60px Arial';
+        ctx.fillText(t.label, t.x, t.y);
+
+        // Va chạm
+        if (t.x < player.x + 60 && t.x + 50 > player.x &&
+            t.y < player.y + 70 && t.y + 50 > player.y) {
+            
+            speak(t.label);
+            score += 10;
+            scoreEl.innerText = score;
+            
+            // Tăng tốc độ mỗi khi ăn 5 dấu (0.5 đơn vị)
+            if (score % 50 === 0 && gameSpeed < maxSpeed) {
+                gameSpeed += 0.5;
+                updateSpeedUI();
+            }
+            
+            tokens.splice(i, 1);
+        }
+        if (t.x < -100) tokens.splice(i, 1);
+    }
+
+    requestAnimationFrame(update);
+}
+
+function updateSpeedUI() {
+    if (gameSpeed < 4.5) speedEl.innerText = "Chậm";
+    else if (gameSpeed < 6) speedEl.innerText = "Vừa";
+    else speedEl.innerText = "Nhanh";
+}
+
+// Điều khiển
+const jump = () => { if (player.y === player.groundY) player.dy = player.jumpForce; };
+window.addEventListener('touchstart', jump);
+window.addEventListener('mousedown', jump);
+</script>
+</body>
+</html>
