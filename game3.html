@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game 3: Ca Sĩ Nhí</title>
+    <style>
+        body {
+            margin: 0; padding: 10px;
+            display: flex; flex-direction: column; align-items: center;
+            background-color: #fff0f6; font-family: 'Arial', sans-serif;
+            touch-action: manipulation; overflow: hidden;
+        }
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-start {
+            padding: 20px 60px; font-size: 30px; font-weight: bold;
+            background: #ff85c0; color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 8px 0 #eb2f96;
+        }
+        #ui-panel { text-align: center; width: 100%; max-width: 550px; }
+        #stage-msg {
+            background: white; padding: 15px; border-radius: 20px;
+            border: 4px solid #ff85c0; font-size: 22px;
+            color: #9e1068; margin: 10px 0; font-weight: bold;
+        }
+        .level-group { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        .btn-level {
+            padding: 10px 15px; font-size: 14px; font-weight: bold;
+            border: 2px solid #ff85c0; border-radius: 15px; background: white;
+            cursor: pointer; color: #ff85c0;
+        }
+        .btn-level.active { background: #ff85c0; color: white; }
+        
+        canvas {
+            background: #ffffff; border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(235, 47, 150, 0.2);
+            max-width: 95%; border: 8px solid #fff;
+        }
+        .btn-back { 
+            position: fixed; top: 15px; left: 15px; 
+            background: #667eea; color: white; border: none; 
+            padding: 10px 20px; border-radius: 25px; 
+            font-size: 16px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 50;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-back:hover { background: #5568d3; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="btn-back">← Quay lại</a>
+
+    <div id="start-overlay">
+        <h1 style="color: #eb2f96; font-size: 36px;">🎤 CA SĨ NHÍ 🎤</h1>
+        <p style="font-size: 18px; color: #666;">Bé hãy đọc thật to theo nhịp nhé!</p>
+        <button class="btn-start" onclick="startGame()">BẮT ĐẦU 🎶</button>
+    </div>
+
+    <div id="ui-panel">
+        <div class="level-group">
+            <button class="btn-level active" id="lv1" onclick="setLevel(1)">Cấp 1: Xuôi</button>
+            <button class="btn-level" id="lv2" onclick="setLevel(2)">Cấp 2: Ngược</button>
+            <button class="btn-level" id="lv3" onclick="setLevel(3)">Cấp 3: Ngẫu Nhiên</button>
+        </div>
+        <div id="stage-msg">Nhấn vào chữ để bắt đầu hát!</div>
+    </div>
+
+    <canvas id="musicCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('musicCanvas');
+const ctx = canvas.getContext('2d');
+const msgEl = document.getElementById('stage-msg');
+
+let items = [];
+let femaleVoice = null;
+let currentLevel = 1;
+let activeIndex = -1;
+
+const data = [
+    { label: 'A', id: 'ngang', color: '#ff4d4f' },
+    { label: 'À', id: 'huyen', color: '#40a9ff' },
+    { label: 'Á', id: 'sac', color: '#ffec3d' },
+    { id: 'hoi', label: 'Ả', color: '#9254de' },
+    { id: 'nga', label: 'Ã', color: '#73d13d' },
+    { id: 'nang', label: 'Ạ', color: '#ff7875' }
+];
+
+// --- ÂM THANH ---
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    femaleVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Linh') || v.name.includes('Google') || v.name.includes('An'))) || voices.find(v => v.lang.includes('vi'));
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utter.voice = femaleVoice;
+    utter.lang = 'vi-VN';
+    utter.rate = 0.75; // Tốc độ nữ nhanh vừa phải
+    utter.pitch = 1.2;
+    utter.volume = 1.0;
+    window.speechSynthesis.speak(utter);
+}
+
+// --- LOGIC GAME ---
+function startGame() {
+    document.getElementById('start-overlay').style.display = 'none';
+    resize();
+    initItems();
+    animate();
+}
+
+function setLevel(lv) {
+    currentLevel = lv;
+    document.querySelectorAll('.btn-level').forEach(b => b.classList.remove('active'));
+    document.getElementById('lv' + lv).classList.add('active');
+    
+    if (lv === 1) msgEl.innerText = "Hát từ A đến Ạ nhé!";
+    if (lv === 2) msgEl.innerText = "Hát ngược từ Ạ về A nào!";
+    if (lv === 3) msgEl.innerText = "Thử thách hát ngẫu nhiên!";
+    
+    initItems();
+}
+
+function initItems() {
+    items = [];
+    let displayList = [...data];
+    if (currentLevel === 2) displayList.reverse();
+    if (currentLevel === 3) displayList.sort(() => Math.random() - 0.5);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = canvas.width * 0.35;
+
+    displayList.forEach((d, i) => {
+        const angle = (i / displayList.length) * Math.PI * 2 - Math.PI / 2;
+        items.push({
+            ...d,
+            x: centerX + Math.cos(angle) * radius,
+            y: centerY + Math.sin(angle) * radius,
+            size: canvas.width / 10,
+            angle: angle
+        });
+    });
+}
+
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Vẽ ánh đèn sân khấu
+    const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 5, canvas.width/2, canvas.height/2, canvas.width/2);
+    grad.addColorStop(0, '#fff0f6');
+    grad.addColorStop(1, '#ffd6e7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    items.forEach((item, i) => {
+        const isSelected = (i === activeIndex);
+        const bounce = Math.sin(Date.now() / 200 + i) * 5;
+        
+        ctx.save();
+        ctx.translate(item.x, item.y + bounce);
+        
+        // Vòng tròn nền cho chữ
+        ctx.shadowBlur = isSelected ? 20 : 5;
+        ctx.shadowColor = item.color;
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(0, 0, item.size + (isSelected ? 10 : 0), 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Chữ cái
+        ctx.fillStyle = item.color;
+        ctx.font = `bold ${item.size}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.label, 0, 0);
+        
+        ctx.restore();
+    });
+
+    requestAnimationFrame(animate);
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    items.forEach((item, i) => {
+        const dist = Math.hypot(mx - item.x, my - item.y);
+        if (dist < item.size + 10) {
+            activeIndex = i;
+            speak(item.label);
+            msgEl.innerText = "Bé hát: " + item.label + " 🎶";
+        }
+    });
+});
+
+function resize() {
+    const s = Math.min(window.innerWidth - 40, 500);
+    canvas.width = s; canvas.height = s;
+}
+
+window.onresize = () => { resize(); initItems(); };
+</script>
+</body>
+</html>
