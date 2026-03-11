@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bé Học Vui - Game Học Chữ A</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 30px 20px;
+        }
+
+        header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .game-icon {
+            font-size: 80px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-card h2 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .game-card p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .game-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .game-features li {
+            padding: 8px 0;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .game-features li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .play-button {
+            display: block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .play-button:hover {
+            opacity: 0.9;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            margin-top: 40px;
+        }
+
+        footer p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 36px;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Bé Học Vui</h1>
+            <p>Game học chữ A với các dấu thanh - Vui học, dễ nhớ!</p>
+        </header>
+
+        <div class="games-grid">
+            <!-- Game 1 -->
+            <div class="game-card">
+                <div class="game-icon">🎯</div>
+                <h2>Game 1: Tìm Giọng Cho Bạn A</h2>
+                <p>Giúp bé luyện phản xạ nối âm thanh với hình ảnh nhân vật biểu cảm tương ứng.</p>
+                <ul class="game-features">
+                    <li>6 nhân vật "bạn A" với biểu cảm khác nhau</li>
+                    <li>Nghe âm thanh và chọn đúng nhân vật</li>
+                    <li>Tính điểm và theo dõi tiến độ</li>
+                    <li>Giao diện thân thiện, dễ sử dụng</li>
+                </ul>
+                <a href="game1.html" class="play-button">Chơi ngay →</a>
+            </div>
+
+            <!-- Game 2 -->
+            <div class="game-card">
+                <div class="game-icon">🎨</div>
+                <h2>Game 2: Khám Phá Dấu Thanh</h2>
+                <p>Trải nghiệm học tập tương tác với các dấu thanh của chữ A qua hình ảnh và âm thanh.</p>
+                <ul class="game-features">
+                    <li>Học 6 dấu thanh: ngang, huyền, sắc, hỏi, ngã, nặng</li>
+                    <li>Hình ảnh minh họa sinh động</li>
+                    <li>Âm thanh chuẩn giúp bé phát âm đúng</li>
+                    <li>Phù hợp cho trẻ mới bắt đầu học</li>
+                </ul>
+                <a href="game2.html" class="play-button">Chơi ngay →</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>💝 Được tạo với tình yêu dành cho các bé yêu học tiếng Việt</p>
+            <p>© 2024 Bé Học Vui - Game giáo dục cho trẻ em</p>
+        </footer>
+    </div>
+</body>
+</html>
