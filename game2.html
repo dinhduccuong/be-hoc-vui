@@ -48,6 +48,24 @@
             text-decoration: none; display: inline-block;
         }
         .btn-back:hover { background: #5568d3; }
+        
+        @media (max-width: 600px) {
+            body { padding: 5px; padding-top: 60px; }
+            .btn-back { 
+                top: 10px; left: 10px; 
+                padding: 8px 15px; font-size: 14px; 
+            }
+            #ui-panel { margin-bottom: 8px; padding: 0 5px; }
+            #story-box { 
+                font-size: 15px; padding: 10px; 
+                min-height: 40px; margin: 5px 0;
+            }
+            .controls { gap: 8px; margin-top: 8px; }
+            .btn-move { 
+                padding: 12px 5px; font-size: 20px; 
+            }
+            canvas { max-width: 100%; }
+        }
     </style>
 </head>
 <body>

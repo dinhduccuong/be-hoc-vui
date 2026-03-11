@@ -43,6 +43,25 @@
             text-decoration: none; display: inline-block;
         }
         .btn-back:hover { background: #5568d3; }
+        
+        @media (max-width: 600px) {
+            body { padding: 5px; padding-top: 60px; }
+            .btn-back { 
+                top: 10px; left: 10px; 
+                padding: 8px 15px; font-size: 14px; 
+            }
+            #ui-layer { margin-bottom: 5px; padding: 0 5px; }
+            #msg { font-size: 18px !important; }
+            #display-box { 
+                width: 100px; height: 100px; 
+                font-size: 60px; border-width: 5px;
+            }
+            .score-box { font-size: 18px; }
+            .btn-replay { 
+                padding: 10px 20px; font-size: 16px; 
+            }
+            canvas { max-width: 100%; }
+        }
     </style>
 </head>
 <body>
