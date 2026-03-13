@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TH - Săn Kho Báu</title>
+    <style>
+        body {
+            margin: 0; padding: 10px; overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif; touch-action: none;
+        }
+        #start-overlay {
+            position: fixed; inset: 0; background: white; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-start {
+            padding: 20px 60px; font-size: 32px; font-weight: bold;
+            background: #ff6b6b; color: white; border: none; border-radius: 60px;
+            cursor: pointer; box-shadow: 0 10px 0 #ee5253;
+        }
+        #ui {
+            position: absolute; top: 15px; width: 100%; text-align: center;
+            pointer-events: none; z-index: 10;
+        }
+        .score-box {
+            font-size: 28px; color: white; font-weight: bold;
+            background: rgba(0,0,0,0.3); padding: 10px 25px; border-radius: 30px;
+        }
+        canvas {
+            display: block; margin: 0 auto;
+            background: #f0f9ff; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .btn-back {
+            position: fixed; top: 15px; left: 15px;
+            background: #667eea; color: white; border: none;
+            padding: 10px 20px; border-radius: 25px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 50;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-back:hover { background: #5568d3; }
+        
+        @media (max-width: 600px) {
+            .btn-back { top: 10px; left: 10px; padding: 8px 15px; font-size: 14px; }
+            .score-box { font-size: 20px; padding: 8px 20px; }
+            #start-overlay h1 { font-size: 32px !important; }
+            .btn-start { padding: 15px 40px; font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="btn-back">← Quay lại</a>
+
+    <div id="start-overlay">
+        <h1 style="color: #667eea; font-size: 40px;">🏴‍☠️ Săn Kho Báu TH</h1>
+        <p style="font-size: 20px; color: #666;">Giúp chữ T tìm đến chữ H để mở kho báu!</p>
+        <button class="btn-start" onclick="startGame()">BẮT ĐẦU 🗺️</button>
+    </div>
+
+    <div id="ui">
+        <div class="score-box">💎 Kho báu: <span id="score">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+
+let score = 0;
+let gameActive = false;
+let femaleVoice = null;
+
+// Nhân vật T
+const player = {
+    x: 50, y: 50, size: 60,
+    speed: 5, color: '#ff6b6b'
+};
+
+// Kho báu H
+let treasure = { x: 0, y: 0, size: 70, found: false };
+
+// Chướng ngại vật
+let obstacles = [];
+
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    femaleVoice = voices.find(v => v.lang.includes('vi')) || voices[0];
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utter.voice = femaleVoice;
+    utter.lang = 'vi-VN';
+    utter.rate = 0.7;
+    window.speechSynthesis.speak(utter);
+}
+
+function startGame() {
+    document.getElementById('start-overlay').style.display = 'none';
+    canvas.width = Math.min(window.innerWidth - 20, 800);
+    canvas.height = Math.min(window.innerHeight - 100, 600);
+    
+    player.x = 50;
+    player.y = canvas.height / 2;
+    
+    spawnTreasure();
+    gameActive = true;
+    requestAnimationFrame(update);
+}
+
+function spawnTreasure() {
+    treasure.x = canvas.width - 100;
+    treasure.y = Math.random() * (canvas.height - 150) + 75;
+    treasure.found = false;
+    
+    // Tạo chướng ngại vật đơn giản
+    obstacles = [];
+    for (let i = 0; i < 3; i++) {
+        obstacles.push({
+            x: 150 + i * 200,
+            y: Math.random() * (canvas.height - 100) + 50,
+            w: 40, h: 40, color: '#95a5a6'
+        });
+    }
+}
+
+function update() {
+    if (!gameActive) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Vẽ đường đi
+    ctx.strokeStyle = '#ddd';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(treasure.x, treasure.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Vẽ chướng ngại vật
+    obstacles.forEach(obs => {
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪨', obs.x + obs.w/2, obs.y + obs.h/2 + 8);
+    });
+    
+    // Vẽ nhân vật T
+    ctx.fillStyle = player.color;
+    ctx.font = 'bold 60px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('T', player.x, player.y);
+    
+    // Vẽ mắt cho T
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(player.x - 10, player.y - 10, 6, 0, Math.PI * 2);
+    ctx.arc(player.x + 10, player.y - 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(player.x - 10, player.y - 10, 3, 0, Math.PI * 2);
+    ctx.arc(player.x + 10, player.y - 10, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Vẽ kho báu H
+    if (!treasure.found) {
+        ctx.fillStyle = '#f39c12';
+        ctx.font = 'bold 70px Arial';
+        ctx.fillText('H', treasure.x, treasure.y);
+        ctx.font = '40px Arial';
+        ctx.fillText('💎', treasure.x, treasure.y - 40);
+    }
+    
+    // Kiểm tra va chạm với kho báu
+    const dist = Math.hypot(player.x - treasure.x, player.y - treasure.y);
+    if (dist < 60 && !treasure.found) {
+        treasure.found = true;
+        score += 10;
+        scoreEl.innerText = score;
+        speak("TH! Tìm thấy kho báu!");
+        
+        setTimeout(() => {
+            spawnTreasure();
+        }, 1500);
+    }
+    
+    requestAnimationFrame(update);
+}
+
+// Điều khiển bằng phím mũi tên
+const keys = {};
+window.addEventListener('keydown', (e) => {
+    keys[e.key] = true;
+    
+    if (keys['ArrowUp']) player.y = Math.max(30, player.y - player.speed);
+    if (keys['ArrowDown']) player.y = Math.min(canvas.height - 30, player.y + player.speed);
+    if (keys['ArrowLeft']) player.x = Math.max(30, player.x - player.speed);
+    if (keys['ArrowRight']) player.x = Math.min(canvas.width - 30, player.x + player.speed);
+});
+
+window.addEventListener('keyup', (e) => {
+    keys[e.key] = false;
+});
+
+// Điều khiển bằng chạm (mobile)
+let touchStartX = 0, touchStartY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    touchStartX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    touchStartY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+});
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const touchY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    
+    player.x = Math.max(30, Math.min(canvas.width - 30, touchX));
+    player.y = Math.max(30, Math.min(canvas.height - 30, touchY));
+});
+
+window.onresize = () => {
+    if (gameActive) {
+        canvas.width = Math.min(window.innerWidth - 20, 800);
+        canvas.height = Math.min(window.innerHeight - 100, 600);
+    }
+};
+</script>
+</body>
+</html>

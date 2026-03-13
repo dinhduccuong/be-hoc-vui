@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TH - Xếp Tháp Cao</title>
+    <style>
+        body {
+            margin: 0; padding: 10px; overflow: hidden;
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 100%);
+            font-family: Arial, sans-serif; touch-action: none;
+        }
+        #start-overlay {
+            position: fixed; inset: 0; background: white; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-start {
+            padding: 20px 60px; font-size: 32px; font-weight: bold;
+            background: #26a69a; color: white; border: none; border-radius: 60px;
+            cursor: pointer; box-shadow: 0 10px 0 #00897b;
+        }
+        #ui {
+            position: absolute; top: 15px; width: 100%; text-align: center;
+            pointer-events: none; z-index: 10;
+        }
+        .info-box {
+            font-size: 24px; color: #00695c; font-weight: bold;
+            background: rgba(255,255,255,0.9); padding: 10px 25px; border-radius: 30px;
+        }
+        canvas {
+            display: block; margin: 0 auto;
+            border-radius: 20px;
+        }
+        .btn-back {
+            position: fixed; top: 15px; left: 15px;
+            background: #667eea; color: white; border: none;
+            padding: 10px 20px; border-radius: 25px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 50;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-back:hover { background: #5568d3; }
+        .drop-btn {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            padding: 18px 50px; font-size: 28px; font-weight: bold;
+            background: #ff5252; color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 8px 0 #d32f2f; z-index: 20;
+        }
+        
+        @media (max-width: 600px) {
+            .btn-back { top: 10px; left: 10px; padding: 8px 15px; font-size: 14px; }
+            .info-box { font-size: 18px; padding: 8px 20px; }
+            #start-overlay h1 { font-size: 32px !important; }
+            .btn-start { padding: 15px 40px; font-size: 24px; }
+            .drop-btn { padding: 15px 40px; font-size: 22px; bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="btn-back">← Quay lại</a>
+
+    <div id="start-overlay">
+        <h1 style="color: #26a69a; font-size: 40px;">🏗️ Xếp Tháp TH</h1>
+        <p style="font-size: 20px; color: #666;">Xếp chữ T và H thành tháp thật cao!</p>
+        <button class="btn-start" onclick="startGame()">BẮT ĐẦU 🧱</button>
+    </div>
+
+    <div id="ui">
+        <div class="info-box">🏗️ Tầng: <span id="floorCount">0</span> | ⭐ Điểm: <span id="score">0</span></div>
+    </div>
+
+    <button class="drop-btn" id="dropBtn" style="display:none;" onclick="dropBlock()">THẢ XUỐNG ⬇️</button>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const floorEl = document.getElementById('floorCount');
+const scoreEl = document.getElementById('score');
+const dropBtn = document.getElementById('dropBtn');
+
+let score = 0;
+let floors = 0;
+let gameActive = false;
+let femaleVoice = null;
+
+// Khối xếp
+let blocks = [];
+let currentBlock = null;
+let groundY = 0;
+const BLOCK_W = 80;
+const BLOCK_H = 50;
+
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    femaleVoice = voices.find(v => v.lang.includes('vi')) || voices[0];
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utter.voice = femaleVoice;
+    utter.lang = 'vi-VN';
+    utter.rate = 0.7;
+    window.speechSynthesis.speak(utter);
+}
+
+function startGame() {
+    document.getElementById('start-overlay').style.display = 'none';
+    dropBtn.style.display = 'block';
+    canvas.width = Math.min(window.innerWidth - 20, 500);
+    canvas.height = Math.min(window.innerHeight - 120, 700);
+    groundY = canvas.height - 30;
+    
+    blocks = [];
+    score = 0;
+    floors = 0;
+    gameActive = true;
+    spawnBlock();
+    requestAnimationFrame(update);
+}
+
+function spawnBlock() {
+    const isT = Math.random() > 0.5;
+    currentBlock = {
+        x: 0,
+        y: 60,
+        w: BLOCK_W,
+        h: BLOCK_H,
+        label: isT ? 'T' : 'H',
+        color: isT ? '#ff6b6b' : '#4ecdc4',
+        dx: 3,
+        dropping: false,
+        dy: 0,
+        settled: false
+    };
+}
+
+function dropBlock() {
+    if (currentBlock && !currentBlock.dropping) {
+        currentBlock.dropping = true;
+        currentBlock.dy = 4;
+    }
+}
+
+function getTopY() {
+    if (blocks.length === 0) return groundY;
+    let minY = groundY;
+    blocks.forEach(b => {
+        if (b.y < minY) minY = b.y;
+    });
+    return minY;
+}
+
+function checkLanding() {
+    const b = currentBlock;
+    const topY = getTopY();
+    
+    if (b.y + b.h >= topY) {
+        b.y = topY - b.h;
+        b.settled = true;
+        
+        // Kiểm tra xem có nằm trên tháp không
+        const centerX = b.x + b.w / 2;
+        const canvasCenter = canvas.width / 2;
+        
+        if (blocks.length === 0 || Math.abs(centerX - canvasCenter) < BLOCK_W * 1.5) {
+            blocks.push({...b});
+            floors++;
+            score += 10;
+            floorEl.innerText = floors;
+            scoreEl.innerText = score;
+            speak(b.label);
+            spawnBlock();
+        } else {
+            // Rơi ra ngoài
+            speak("Ôi! Thử lại nhé!");
+            spawnBlock();
+        }
+    }
+}
+
+function update() {
+    if (!gameActive) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Vẽ nền trời
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#87ceeb');
+    skyGrad.addColorStop(1, '#e0f7fa');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Vẽ mặt đất
+    ctx.fillStyle = '#8bc34a';
+    ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY + 30);
+    ctx.fillStyle = '#689f38';
+    ctx.fillRect(0, groundY, canvas.width, 5);
+    
+    // Vẽ các khối đã xếp
+    blocks.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, b.x + b.w/2, b.y + b.h/2);
+    });
+    
+    // Vẽ và di chuyển khối hiện tại
+    if (currentBlock && !currentBlock.settled) {
+        const b = currentBlock;
+        
+        if (!b.dropping) {
+            b.x += b.dx;
+            if (b.x <= 0 || b.x + b.w >= canvas.width) b.dx *= -1;
+        } else {
+            b.y += b.dy;
+            checkLanding();
+        }
+        
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, b.x + b.w/2, b.y + b.h/2);
+    }
+    
+    requestAnimationFrame(update);
+}
+
+// Bấm phím Space hoặc chạm để thả
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') dropBlock();
+});
+
+canvas.addEventListener('touchstart', () => dropBlock());
+canvas.addEventListener('mousedown', () => dropBlock());
+</script>
+</body>
+</html>

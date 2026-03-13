@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TH - Nhận Diện Chữ</title>
+    <style>
+        body {
+            margin: 0; padding: 10px; overflow: hidden;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            font-family: Arial, sans-serif; touch-action: none;
+        }
+        #start-overlay {
+            position: fixed; inset: 0; background: white; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .btn-start {
+            padding: 20px 60px; font-size: 32px; font-weight: bold;
+            background: #fd79a8; color: white; border: none; border-radius: 60px;
+            cursor: pointer; box-shadow: 0 10px 0 #e84393;
+        }
+        #ui {
+            position: absolute; top: 15px; width: 100%; text-align: center;
+            pointer-events: none; z-index: 10;
+        }
+        .score-box {
+            font-size: 28px; color: #d63031; font-weight: bold;
+            background: rgba(255,255,255,0.9); padding: 10px 25px; border-radius: 30px;
+        }
+        canvas {
+            display: block; margin: 0 auto;
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .btn-back {
+            position: fixed; top: 15px; left: 15px;
+            background: #667eea; color: white; border: none;
+            padding: 10px 20px; border-radius: 25px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 50;
+            text-decoration: none; display: inline-block;
+        }
+        .btn-back:hover { background: #5568d3; }
+        
+        @media (max-width: 600px) {
+            .btn-back { top: 10px; left: 10px; padding: 8px 15px; font-size: 14px; }
+            .score-box { font-size: 20px; padding: 8px 20px; }
+            #start-overlay h1 { font-size: 32px !important; }
+            .btn-start { padding: 15px 40px; font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="btn-back">← Quay lại</a>
+
+    <div id="start-overlay">
+        <h1 style="color: #fd79a8; font-size: 40px;">🎯 Tìm Chữ TH</h1>
+        <p style="font-size: 20px; color: #666;">Chạm vào chữ TH khi chúng bay qua!</p>
+        <button class="btn-start" onclick="startGame()">BẮT ĐẦU 🚀</button>
+    </div>
+
+    <div id="ui">
+        <div class="score-box">⭐ Điểm: <span id="score">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+
+let score = 0;
+let gameActive = false;
+let femaleVoice = null;
+
+// Các chữ bay
+let letters = [];
+
+// Từ vựng đơn giản có TH cho bé
+const words = [
+    { text: 'TH', isCorrect: true, color: '#00b894' },
+    { text: 'THỨ', isCorrect: true, color: '#00b894' },
+    { text: 'THỨ', isCorrect: true, color: '#00b894' },
+    { text: 'T', isCorrect: false, color: '#ff7675' },
+    { text: 'H', isCorrect: false, color: '#ff7675' },
+    { text: 'A', isCorrect: false, color: '#ff7675' },
+    { text: 'B', isCorrect: false, color: '#ff7675' }
+];
+
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    femaleVoice = voices.find(v => v.lang.includes('vi')) || voices[0];
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utter.voice = femaleVoice;
+    utter.lang = 'vi-VN';
+    utter.rate = 0.7;
+    window.speechSynthesis.speak(utter);
+}
+
+function startGame() {
+    document.getElementById('start-overlay').style.display = 'none';
+    canvas.width = Math.min(window.innerWidth - 20, 800);
+    canvas.height = Math.min(window.innerHeight - 100, 600);
+    
+    letters = [];
+    score = 0;
+    gameActive = true;
+    requestAnimationFrame(update);
+}
+
+function spawnLetter() {
+    const word = words[Math.floor(Math.random() * words.length)];
+    letters.push({
+        x: canvas.width + 50,
+        y: Math.random() * (canvas.height - 100) + 50,
+        speed: 2 + Math.random() * 2,
+        size: 60,
+        ...word
+    });
+}
+
+let spawnTimer = 0;
+function update() {
+    if (!gameActive) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Vẽ nền
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#ffeaa7');
+    grad.addColorStop(1, '#fdcb6e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Sinh chữ mới
+    spawnTimer++;
+    if (spawnTimer > 80) {
+        spawnLetter();
+        spawnTimer = 0;
+    }
+    
+    // Vẽ và di chuyển các chữ
+    for (let i = letters.length - 1; i >= 0; i--) {
+        const l = letters[i];
+        l.x -= l.speed;
+        
+        // Vẽ nền chữ
+        ctx.fillStyle = l.color + '44';
+        ctx.beginPath();
+        const padding = 20;
+        const textWidth = ctx.measureText(l.text).width || l.size;
+        ctx.roundRect(l.x - textWidth/2 - padding, l.y - l.size/2 - padding, 
+                      textWidth + padding*2, l.size + padding*2, 15);
+        ctx.fill();
+        
+        // Vẽ chữ
+        ctx.fillStyle = l.color;
+        ctx.font = `bold ${l.size}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(l.text, l.x, l.y);
+        
+        // Xóa chữ ra khỏi màn hình
+        if (l.x < -100) letters.splice(i, 1);
+    }
+    
+    requestAnimationFrame(update);
+}
+
+// Xử lý chạm/click
+function handleClick(x, y) {
+    for (let i = letters.length - 1; i >= 0; i--) {
+        const l = letters[i];
+        const textWidth = ctx.measureText(l.text).width || l.size;
+        const padding = 20;
+        
+        if (x > l.x - textWidth/2 - padding && x < l.x + textWidth/2 + padding &&
+            y > l.y - l.size/2 - padding && y < l.y + l.size/2 + padding) {
+            
+            if (l.isCorrect) {
+                score += 10;
+                scoreEl.innerText = score;
+                speak("TH! Đúng rồi!");
+                
+                // Hiệu ứng nổ
+                ctx.fillStyle = '#00b894';
+                ctx.font = 'bold 40px Arial';
+                ctx.fillText('✨ +10', l.x, l.y - 40);
+            } else {
+                speak("Chưa đúng! Tìm chữ TH nhé!");
+            }
+            
+            letters.splice(i, 1);
+            break;
+        }
+    }
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    handleClick(x, y);
+});
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    handleClick(x, y);
+});
+
+// Polyfill cho roundRect
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        this.moveTo(x + r, y);
+        this.lineTo(x + w - r, y);
+        this.quadraticCurveTo(x + w, y, x + w, y + r);
+        this.lineTo(x + w, y + h - r);
+        this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        this.lineTo(x + r, y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - r);
+        this.lineTo(x, y + r);
+        this.quadraticCurveTo(x, y, x + r, y);
+    };
+}
+</script>
+</body>
+</html>
