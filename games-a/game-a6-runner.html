@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B-Runner - Chinh Phục Thanh Điệu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Comic Sans MS', cursive;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: #87CEEB;
+            border: 5px solid #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #question {
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 15px 30px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        #score {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .btn {
+            position: absolute;
+            bottom: 30px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-family: 'Comic Sans MS', cursive;
+        }
+        .btn:hover {
+            transform: scale(1.1);
+        }
+        #btnSac {
+            left: 20%;
+            background: #ff6b6b;
+            color: white;
+        }
+        #btnHuyen {
+            left: 40%;
+            background: #4ecdc4;
+            color: white;
+        }
+        #btnHoi {
+            left: 60%;
+            background: #ffe66d;
+            color: #333;
+        }
+        #btnNga {
+            left: 80%;
+            background: #95e1d3;
+            color: #333;
+        }
+        #btnNang {
+            left: 50%;
+            transform: translateX(-50%);
+            background: #a8e6cf;
+            color: #333;
+            bottom: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="question">Tìm: Người sinh ra mẹ</div>
+        <div id="score">Điểm: 0</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <button class="btn" id="btnSac" onclick="selectTone('sac')">Sắc ( ́ )</button>
+    <button class="btn" id="btnHuyen" onclick="selectTone('huyen')">Huyền ( ` )</button>
+    <button class="btn" id="btnHoi" onclick="selectTone('hoi')">Hỏi ( ? )</button>
+    <button class="btn" id="btnNga" onclick="selectTone('nga')">Ngã ( ~ )</button>
+    <button class="btn" id="btnNang" onclick="selectTone('nang')">Nặng ( . )</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 500;
+
+        const questions = [
+            { question: "Người sinh ra mẹ", vowel: "a", tone: "huyen", word: "bà", meaning: "Bà nội/ngoại" },
+            { question: "Con nhỏ, em bé", vowel: "e", tone: "sac", word: "bé", meaning: "Trẻ con" },
+            { question: "Người sinh ra con", vowel: "o", tone: "nang", word: "bố", meaning: "Cha" },
+            { question: "Thứ để ăn cơm", vowel: "a", tone: "nang", word: "bát", meaning: "Chén" },
+            { question: "Màu trắng", vowel: "a", tone: "nang", word: "bạc", meaning: "Màu xám trắng" },
+            { question: "Thứ để đựng nước", vowel: "i", tone: "huyen", word: "bình", meaning: "Chai" }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let bChar = { x: 100, y: 350, size: 60, speed: 3 };
+        let vowelChar = { x: 600, y: 350, size: 50, letter: "a" };
+        let selectedTone = null;
+        let gameState = "running"; // running, waiting, correct, wrong
+
+        function drawChar(char, letter, color = "#2c3e50") {
+            ctx.fillStyle = color;
+            ctx.font = `bold ${char.size}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(letter, char.x, char.y);
+            
+            // Shadow
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 3;
+            ctx.strokeText(letter, char.x, char.y);
+        }
+
+        function drawGround() {
+            ctx.fillStyle = "#90EE90";
+            ctx.fillRect(0, 400, canvas.width, 100);
+            
+            // Grass details
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.fillStyle = "#228B22";
+                ctx.fillRect(i, 400, 3, 10);
+            }
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = "rgba(255,255,255,0.7)";
+            ctx.beginPath();
+            ctx.arc(100, 80, 30, 0, Math.PI * 2);
+            ctx.arc(130, 80, 40, 0, Math.PI * 2);
+            ctx.arc(160, 80, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(600, 120, 35, 0, Math.PI * 2);
+            ctx.arc(640, 120, 45, 0, Math.PI * 2);
+            ctx.arc(680, 120, 35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function selectTone(tone) {
+            if (gameState !== "running") return;
+            
+            selectedTone = tone;
+            checkAnswer();
+        }
+
+        function checkAnswer() {
+            const current = questions[currentQuestion];
+            
+            if (selectedTone === current.tone) {
+                gameState = "correct";
+                score += 10;
+                document.getElementById('score').textContent = `Điểm: ${score}`;
+                
+                // Speak the word
+                speakWord(current.word);
+                
+                // Show celebration
+                setTimeout(() => {
+                    currentQuestion++;
+                    if (currentQuestion >= questions.length) {
+                        alert(`🎉 Chúc mừng! Bạn đã hoàn thành! Điểm: ${score}`);
+                        currentQuestion = 0;
+                        score = 0;
+                    }
+                    loadQuestion();
+                    gameState = "running";
+                    selectedTone = null;
+                }, 2000);
+            } else {
+                gameState = "wrong";
+                setTimeout(() => {
+                    gameState = "running";
+                    selectedTone = null;
+                }, 1000);
+            }
+        }
+
+        function speakWord(word) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'vi-VN';
+            utterance.rate = 0.8;
+            speechSynthesis.speak(utterance);
+        }
+
+        function loadQuestion() {
+            const current = questions[currentQuestion];
+            document.getElementById('question').textContent = `Tìm: ${current.question}`;
+            vowelChar.letter = current.vowel;
+            vowelChar.x = 600;
+            bChar.x = 100;
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawClouds();
+            drawGround();
+            
+            // Move B towards vowel
+            if (gameState === "running" && bChar.x < vowelChar.x - 80) {
+                bChar.x += bChar.speed;
+            }
+            
+            // Draw characters
+            drawChar(bChar, "B", "#e74c3c");
+            drawChar(vowelChar, vowelChar.letter, "#3498db");
+            
+            // Show result
+            if (gameState === "correct") {
+                ctx.fillStyle = "#27ae60";
+                ctx.font = "bold 80px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("✓ Đúng rồi!", canvas.width/2, canvas.height/2);
+                
+                const current = questions[currentQuestion];
+                ctx.font = "bold 60px Arial";
+                ctx.fillText(current.word.toUpperCase(), canvas.width/2, canvas.height/2 + 80);
+            } else if (gameState === "wrong") {
+                ctx.fillStyle = "#e74c3c";
+                ctx.font = "bold 80px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("✗ Thử lại!", canvas.width/2, canvas.height/2);
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
+        loadQuestion();
+        animate();
+    </script>
+</body>
+</html>

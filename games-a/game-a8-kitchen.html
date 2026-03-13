@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B-Kitchen - Bếp Ăn Tiếng Việt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Comic Sans MS', cursive;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 20px auto;
+            background: #fff;
+            border: 5px solid #8B4513;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+        }
+        #score {
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            background: rgba(139, 69, 19, 0.8);
+            padding: 10px 30px;
+            border-radius: 20px;
+        }
+        .ingredient-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        .ingredient {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: grab;
+            transition: transform 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .ingredient:hover {
+            transform: scale(1.1);
+        }
+        .ingredient.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="score">Điểm: 0 | Thời gian: 60s</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="ingredient-panel">
+        <div class="ingredient" draggable="true" data-type="vowel" data-value="a">a</div>
+        <div class="ingredient" draggable="true" data-type="vowel" data-value="e">e</div>
+        <div class="ingredient" draggable="true" data-type="vowel" data-value="o">o</div>
+        <div class="ingredient" draggable="true" data-type="vowel" data-value="ơ">ơ</div>
+        <div class="ingredient" draggable="true" data-type="tone" data-value="sac">́</div>
+        <div class="ingredient" draggable="true" data-type="tone" data-value="huyen">`</div>
+        <div class="ingredient" draggable="true" data-type="tone" data-value="hoi">?</div>
+        <div class="ingredient" draggable="true" data-type="tone" data-value="nang">.</div>
+        <div class="ingredient" draggable="true" data-type="tone" data-value="none">∅</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 500;
+
+        const orders = [
+            { animal: "🐄 Bò", word: "bé", vowel: "e", tone: "sac", meaning: "Con nhỏ" },
+            { animal: "🐄 Bò", word: "bơ", vowel: "ơ", tone: "none", meaning: "Bơ sữa" },
+            { animal: "🐆 Báo", word: "bà", vowel: "a", tone: "huyen", meaning: "Bà nội" },
+            { animal: "🐞 Bọ", word: "bố", vowel: "o", tone: "nang", meaning: "Cha" },
+            { animal: "🐄 Bò", word: "bò", vowel: "o", tone: "huyen", meaning: "Con bò" },
+            { animal: "🐆 Báo", word: "bỏ", vowel: "o", tone: "hoi", meaning: "Bỏ đi" }
+        ];
+
+        let score = 0;
+        let timeLeft = 60;
+        let currentOrder = null;
+        let selectedVowel = null;
+        let selectedTone = null;
+        let customers = [];
+        let orderTimer = 0;
+
+        class Customer {
+            constructor(order) {
+                this.order = order;
+                this.x = -100;
+                this.y = 150;
+                this.patience = 100;
+                this.served = false;
+            }
+
+            update() {
+                if (this.x < 150) {
+                    this.x += 2;
+                }
+                if (!this.served) {
+                    this.patience -= 0.2;
+                }
+                return this.patience > 0;
+            }
+
+            draw() {
+                // Customer
+                ctx.font = "60px Arial";
+                ctx.fillText(this.order.animal, this.x, this.y);
+
+                // Speech bubble
+                ctx.fillStyle = "white";
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(this.x + 80, this.y - 60, 150, 80, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                // Order text
+                ctx.fillStyle = "#333";
+                ctx.font = "bold 30px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(this.order.word, this.x + 155, this.y - 20);
+
+                // Patience bar
+                ctx.fillStyle = this.patience > 50 ? "#27ae60" : this.patience > 25 ? "#f39c12" : "#e74c3c";
+                ctx.fillRect(this.x, this.y + 20, this.patience * 1.5, 10);
+                ctx.strokeStyle = "#333";
+                ctx.strokeRect(this.x, this.y + 20, 150, 10);
+            }
+        }
+
+        function spawnCustomer() {
+            const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+            currentOrder = randomOrder;
+            customers.push(new Customer(randomOrder));
+        }
+
+        function checkOrder() {
+            if (!currentOrder || !selectedVowel || !selectedTone) return;
+
+            const customer = customers[0];
+            if (!customer || customer.served) return;
+
+            if (selectedVowel === currentOrder.vowel && selectedTone === currentOrder.tone) {
+                // Correct!
+                score += Math.floor(customer.patience / 10);
+                customer.served = true;
+                speakWord(currentOrder.word);
+                
+                setTimeout(() => {
+                    customers.shift();
+                    currentOrder = null;
+                }, 1000);
+            } else {
+                // Wrong!
+                customer.patience -= 30;
+            }
+
+            selectedVowel = null;
+            selectedTone = null;
+        }
+
+        function speakWord(word) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'vi-VN';
+            utterance.rate = 0.8;
+            speechSynthesis.speak(utterance);
+        }
+
+        function drawKitchen() {
+            // Counter
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(0, 350, canvas.width, 150);
+            
+            // Cooking area
+            ctx.fillStyle = "#D2691E";
+            ctx.fillRect(500, 250, 250, 100);
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(500, 250, 250, 100);
+
+            // B character (chef)
+            ctx.font = "bold 80px Arial";
+            ctx.fillStyle = "#e74c3c";
+            ctx.textAlign = "center";
+            ctx.fillText("B", 625, 320);
+
+            // Chef hat
+            ctx.fillStyle = "white";
+            ctx.fillRect(590, 240, 70, 20);
+            ctx.beginPath();
+            ctx.arc(625, 240, 40, 0, Math.PI, true);
+            ctx.fill();
+
+            // Selected ingredients display
+            if (selectedVowel || selectedTone) {
+                ctx.fillStyle = "rgba(255,255,255,0.9)";
+                ctx.fillRect(520, 270, 200, 60);
+                ctx.strokeStyle = "#333";
+                ctx.strokeRect(520, 270, 200, 60);
+
+                ctx.fillStyle = "#333";
+                ctx.font = "bold 40px Arial";
+                let display = "B";
+                if (selectedVowel) display += selectedVowel;
+                if (selectedTone && selectedTone !== "none") {
+                    const toneSymbols = { sac: "́", huyen: "`", hoi: "?", nang: "." };
+                    display += toneSymbols[selectedTone] || "";
+                }
+                ctx.fillText(display, 620, 310);
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = "#FFF8DC";
+            ctx.fillRect(0, 0, canvas.width, 350);
+
+            drawKitchen();
+
+            // Update customers
+            customers = customers.filter(customer => {
+                const alive = customer.update();
+                if (alive) {
+                    customer.draw();
+                }
+                return alive;
+            });
+
+            // Spawn new customer
+            orderTimer++;
+            if (orderTimer > 180 && customers.length < 2) {
+                spawnCustomer();
+                orderTimer = 0;
+            }
+
+            // Timer
+            if (timeLeft > 0) {
+                timeLeft -= 1/60;
+                document.getElementById('score').textContent = 
+                    `Điểm: ${score} | Thời gian: ${Math.ceil(timeLeft)}s`;
+            } else {
+                ctx.fillStyle = "rgba(0,0,0,0.8)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 50px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Hết giờ!", canvas.width/2, canvas.height/2 - 30);
+                ctx.font = "bold 40px Arial";
+                ctx.fillText(`Điểm: ${score}`, canvas.width/2, canvas.height/2 + 30);
+                return;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Drag and drop
+        let draggedElement = null;
+
+        document.querySelectorAll('.ingredient').forEach(elem => {
+            elem.addEventListener('dragstart', (e) => {
+                draggedElement = e.target;
+                e.target.classList.add('dragging');
+            });
+
+            elem.addEventListener('dragend', (e) => {
+                e.target.classList.remove('dragging');
+            });
+        });
+
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!draggedElement) return;
+
+            const type = draggedElement.dataset.type;
+            const value = draggedElement.dataset.value;
+
+            if (type === 'vowel') {
+                selectedVowel = value;
+            } else if (type === 'tone') {
+                selectedTone = value;
+            }
+
+            if (selectedVowel && selectedTone) {
+                checkOrder();
+            }
+        });
+
+        spawnCustomer();
+        animate();
+    </script>
+</body>
+</html>

@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bé Học Vui - Game Học Chữ Cái</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Game học tiếng Việt cho bé 3-6 tuổi - Vui học, dễ nhớ!">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bé Học Vui">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    
     <style>
         * {
             margin: 0;
@@ -235,6 +250,52 @@
             </div>
         </div>
 
+        <!-- PHẦN GAME CHỮ B -->
+        <h2 class="section-title">🅱️ Game Học Chữ B</h2>
+        <div class="games-grid">
+            <!-- Game B1 -->
+            <div class="game-card">
+                <div class="game-icon">🏃</div>
+                <h2>B1: B-Runner</h2>
+                <p>Chữ B chạy trên đường, gặp nguyên âm và chọn đúng dấu thanh để tạo từ có nghĩa!</p>
+                <ul class="game-features">
+                    <li>Chữ B chạy ăn nguyên âm</li>
+                    <li>Chọn dấu thanh đúng theo gợi ý</li>
+                    <li>Phát âm chuẩn bằng Speech API</li>
+                    <li>6 câu hỏi vui nhộn cho bé</li>
+                </ul>
+                <a href="games-a/game-a6-runner.html" class="play-button">Chơi ngay →</a>
+            </div>
+
+            <!-- Game B2 -->
+            <div class="game-card">
+                <div class="game-icon">⚖️</div>
+                <h2>B2: B-Balance</h2>
+                <p>Cân bằng các dấu thanh trên bập bênh chữ B! Mỗi dấu có trọng lượng khác nhau.</p>
+                <ul class="game-features">
+                    <li>Dấu Nặng rất nặng, rơi nhanh</li>
+                    <li>Dấu Huyền đẩy sang trái</li>
+                    <li>Ghi nhớ hình dáng dấu thanh</li>
+                    <li>Game vật lý vui nhộn</li>
+                </ul>
+                <a href="games-a/game-a7-balance.html" class="play-button">Chơi ngay →</a>
+            </div>
+
+            <!-- Game B3 -->
+            <div class="game-card">
+                <div class="game-icon">🍳</div>
+                <h2>B3: B-Kitchen</h2>
+                <p>Nấu ăn cho khách hàng là các con vật chữ B! Kéo thả nguyên âm và dấu thanh.</p>
+                <ul class="game-features">
+                    <li>Khách hàng: Bò, Báo, Bọ</li>
+                    <li>Kéo thả nguyên liệu vào bếp</li>
+                    <li>Ghép B + nguyên âm + dấu thanh</li>
+                    <li>Quản lý thời gian 60 giây</li>
+                </ul>
+                <a href="games-a/game-a8-kitchen.html" class="play-button">Chơi ngay →</a>
+            </div>
+        </div>
+
         <!-- PHẦN GAME CHỮ TH -->
         <h2 class="section-title">🎯 Game Học Chữ TH (Phụ Âm Bật Hơi)</h2>
         <div class="games-grid">
@@ -286,5 +347,60 @@
             <p>© 2024 Bé Học Vui - Game giáo dục cho trẻ em</p>
         </footer>
     </div>
+
+    <!-- PWA Install Prompt -->
+    <div id="installPrompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; max-width: 90%; text-align: center;">
+        <p style="margin: 0 0 15px 0; font-size: 18px; color: #333;">📱 Cài đặt app để chơi offline!</p>
+        <button onclick="installApp()" style="background: #667eea; color: white; border: none; padding: 12px 30px; border-radius: 10px; font-size: 16px; cursor: pointer; margin-right: 10px;">Cài đặt</button>
+        <button onclick="dismissInstall()" style="background: #ccc; color: #333; border: none; padding: 12px 30px; border-radius: 10px; font-size: 16px; cursor: pointer;">Để sau</button>
+    </div>
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').style.display = 'block';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('installPrompt').style.display = 'none';
+                });
+            }
+        }
+
+        function dismissInstall() {
+            document.getElementById('installPrompt').style.display = 'none';
+        }
+
+        // Detect if app is installed
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            document.getElementById('installPrompt').style.display = 'none';
+        });
+    </script>
 </body>
 </html>

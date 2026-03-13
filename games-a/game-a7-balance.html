@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B-Balance - Cân Bằng Dấu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Comic Sans MS', cursive;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #gameCanvas {
+            background: #fff;
+            border: 5px solid #333;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            border-radius: 10px;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            z-index: 10;
+        }
+        #score {
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
+            padding: 10px 30px;
+            border-radius: 20px;
+        }
+        #instruction {
+            margin-top: 10px;
+            font-size: 20px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="score">Điểm: 0 | Cân bằng: 0%</div>
+        <div id="instruction">Nhấn chuột để thả dấu thanh!</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 600;
+
+        let score = 0;
+        let balance = 0; // -100 to 100
+        let gameOver = false;
+
+        const pivot = { x: canvas.width / 2, y: 400 };
+        const platform = { width: 300, height: 20, angle: 0 };
+
+        const toneTypes = [
+            { name: "Sắc", symbol: "́", weight: 3, color: "#e74c3c", force: 0 },
+            { name: "Huyền", symbol: "`", weight: 4, color: "#3498db", force: -2 },
+            { name: "Hỏi", symbol: "?", weight: 2, color: "#f39c12", force: 0 },
+            { name: "Ngã", symbol: "~", weight: 3, color: "#9b59b6", force: 1 },
+            { name: "Nặng", symbol: ".", weight: 8, color: "#2c3e50", force: 0 }
+        ];
+
+        let fallingTone = null;
+        let placedTones = [];
+        let nextToneTimer = 0;
+
+        class Tone {
+            constructor(type, x) {
+                this.type = type;
+                this.x = x;
+                this.y = 0;
+                this.vy = 0;
+                this.placed = false;
+                this.offsetX = 0; // Position on platform
+            }
+
+            update() {
+                if (!this.placed) {
+                    this.vy += 0.3; // Gravity
+                    this.y += this.vy;
+
+                    // Check collision with platform
+                    const platformY = pivot.y - Math.sin(platform.angle) * (this.x - pivot.x);
+                    if (this.y >= platformY - 20) {
+                        this.placed = true;
+                        this.y = platformY - 20;
+                        this.offsetX = this.x - pivot.x;
+                        placedTones.push(this);
+                        score += 5;
+                        updateBalance();
+                    }
+
+                    // Out of bounds
+                    if (this.y > canvas.height) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            draw() {
+                ctx.fillStyle = this.type.color;
+                ctx.font = `bold ${40}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                
+                if (this.placed) {
+                    // Draw on platform
+                    const platformY = pivot.y - Math.sin(platform.angle) * this.offsetX;
+                    ctx.fillText(this.type.symbol, pivot.x + this.offsetX, platformY - 20);
+                } else {
+                    ctx.fillText(this.type.symbol, this.x, this.y);
+                }
+
+                // Draw weight indicator
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.font = "12px Arial";
+                if (this.placed) {
+                    const platformY = pivot.y - Math.sin(platform.angle) * this.offsetX;
+                    ctx.fillText(`${this.type.weight}kg`, pivot.x + this.offsetX, platformY + 5);
+                } else {
+                    ctx.fillText(`${this.type.weight}kg`, this.x, this.y + 30);
+                }
+            }
+        }
+
+        function updateBalance() {
+            let totalTorque = 0;
+            placedTones.forEach(tone => {
+                const torque = tone.offsetX * tone.type.weight + tone.type.force * 10;
+                totalTorque += torque;
+            });
+
+            balance = Math.max(-100, Math.min(100, totalTorque / 5));
+            platform.angle = (balance / 100) * (Math.PI / 6); // Max 30 degrees
+
+            // Check game over
+            if (Math.abs(balance) > 80) {
+                gameOver = true;
+            }
+
+            document.getElementById('score').textContent = 
+                `Điểm: ${score} | Cân bằng: ${Math.round(100 - Math.abs(balance))}%`;
+        }
+
+        function spawnTone() {
+            const randomType = toneTypes[Math.floor(Math.random() * toneTypes.length)];
+            const randomX = Math.random() * (canvas.width - 100) + 50;
+            fallingTone = new Tone(randomType, randomX);
+        }
+
+        function drawPlatform() {
+            ctx.save();
+            ctx.translate(pivot.x, pivot.y);
+            ctx.rotate(platform.angle);
+
+            // Platform
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(-platform.width / 2, -platform.height / 2, platform.width, platform.height);
+
+            // B character in center
+            ctx.fillStyle = "#e74c3c";
+            ctx.font = "bold 60px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("B", 0, -40);
+
+            ctx.restore();
+
+            // Pivot point
+            ctx.fillStyle = "#333";
+            ctx.beginPath();
+            ctx.moveTo(pivot.x - 20, pivot.y);
+            ctx.lineTo(pivot.x, pivot.y - 30);
+            ctx.lineTo(pivot.x + 20, pivot.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#87CEEB");
+            gradient.addColorStop(1, "#E0F6FF");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ground
+            ctx.fillStyle = "#90EE90";
+            ctx.fillRect(0, pivot.y + 50, canvas.width, canvas.height - pivot.y - 50);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            drawPlatform();
+
+            // Update and draw falling tone
+            if (fallingTone && !fallingTone.placed) {
+                if (!fallingTone.update()) {
+                    fallingTone = null;
+                }
+                if (fallingTone) fallingTone.draw();
+            }
+
+            // Draw placed tones
+            placedTones.forEach(tone => tone.draw());
+
+            // Spawn new tone
+            nextToneTimer++;
+            if (nextToneTimer > 120 && !fallingTone && !gameOver) {
+                spawnTone();
+                nextToneTimer = 0;
+            }
+
+            // Game over
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 60px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Mất cân bằng!", canvas.width / 2, canvas.height / 2 - 50);
+                
+                ctx.font = "bold 40px Arial";
+                ctx.fillText(`Điểm: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+                
+                ctx.font = "30px Arial";
+                ctx.fillText("Nhấn để chơi lại", canvas.width / 2, canvas.height / 2 + 80);
+            } else {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        canvas.addEventListener('click', () => {
+            if (gameOver) {
+                // Reset game
+                score = 0;
+                balance = 0;
+                gameOver = false;
+                placedTones = [];
+                fallingTone = null;
+                platform.angle = 0;
+                nextToneTimer = 0;
+                animate();
+            } else if (fallingTone && !fallingTone.placed) {
+                // Speed up falling
+                fallingTone.vy = 15;
+            }
+        });
+
+        spawnTone();
+        animate();
+    </script>
+</body>
+</html>
